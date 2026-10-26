@@ -14,7 +14,6 @@ Group: Neibyu Daniel · Yonas Tadesse · Selamawit Siferh — Instructor: Fantah
 |---|---|
 | Code + all answers with outputs (Tasks 1–4) | [notebooks/Assignment1_Amharic_Ngram.ipynb](notebooks/Assignment1_Amharic_Ngram.ipynb) |
 | **Reproducibility check** (re-runs everything, PASS/FAIL table) | [notebooks/Reproduce_Assignment1.ipynb](notebooks/Reproduce_Assignment1.ipynb) |
-| Presentation study guide (LaTeX) | [study_guide/study_guide.pdf](study_guide/study_guide.pdf) |
 | Written report | [report/NLP_Assignment1_Report.docx](report/NLP_Assignment1_Report.docx) / [.pdf](report/NLP_Assignment1_Report.pdf) |
 | Figures and raw results | [outputs/figures/](outputs/figures/), [outputs/results.json](outputs/results.json) |
 | Predictive-text app (Task 4) | Live (static, in-browser): https://huggingface.co/spaces/nebadan/amharic-next-word · exact local Gradio version: [app/app.py](app/app.py) |
@@ -51,7 +50,6 @@ notebooks/
 app/                 Gradio app (exact Kneser-Ney, runs locally)
 static_app/          browser version for the free Hugging Face Space: export_tables.py, space/, deploy.sh
 report/              report generator (build_report.js) and the report
-study_guide/         in-depth presentation study guide (LaTeX source + PDF)
 outputs/             results.json and all figures
 data/                GPAC.txt goes here (not committed: 1 GB, from the course link)
 ```
