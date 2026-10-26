@@ -340,15 +340,6 @@ body.push(bullet("**Neural models.** An LSTM or small Transformer language model
 body.push(H2("Conclusion"));
 body.push(P(`On 77 M tokens of Amharic, n-gram models behave as theory predicts: higher orders capture more context but suffer from sparsity, unsmoothed and add-one estimates fail, and Kneser-Ney smoothing turns the extra context into steady gains (perplexity ${fmt(ppKN(1), 0)} → ${fmt(ppKN(4), 0)}). The extrinsic tasks confirm the same ranking. Used as a predictive keyboard, a trigram model ranks the intended word in its top five suggestions ${pct(ex(3, "NWP top5"), 0)} of the time and saves ${pct(ex(3, "KSS (top-5)"), 0)} of keystrokes.`));
 
-body.push(H1("References"));
-[
-  "Gereme, F., Zhu, W., Ayall, T., & Alemu, D. (2021). Combating Fake News in “Low-Resource” Languages: Amharic Fake News Detection Accompanied by Resource Crafting. Information, 12(1), 20. https://doi.org/10.3390/info12010020",
-  "Jurafsky, D., & Martin, J. H. (2024). Speech and Language Processing (3rd ed. draft), Chapter 3: N-gram Language Models.",
-  "Kneser, R., & Ney, H. (1995). Improved backing-off for M-gram language modeling. Proc. ICASSP, 181–184.",
-  "Chen, S. F., & Goodman, J. (1999). An empirical study of smoothing techniques for language modeling. Computer Speech & Language, 13(4), 359–394.",
-  "Shannon, C. E. (1948). A Mathematical Theory of Communication. Bell System Technical Journal, 27, 379–423.",
-].forEach((r) => body.push(P(r)));
-
 // ---------- table of contents (page numbers from a first render) ----------
 const pagesFile = path.join(__dirname, ".toc_pages.json");
 const pages = fs.existsSync(pagesFile) ? JSON.parse(fs.readFileSync(pagesFile, "utf8")) : {};
