@@ -11,24 +11,18 @@
 # ---
 
 # %% [markdown]
-# # Reproducibility check — NLP Assignment 1: Amharic N-gram Language Models
-# **Addis Ababa University · School of Information Technology and Engineering**
-# Group: Neibyu Daniel, Yonas Tadesse, Selamawit Siferh · Instructor: Fantahun B. (PhD)
+# # Reproducibility check — Amharic N-gram Language Models
+# NLP Assignment 1 · Neibyu Daniel, Yonas Tadesse, Selamawit Siferh
 #
-# This notebook re-runs the whole assignment from the raw GPAC file and compares every
-# headline number with the value reported in our report (`outputs/results.json`).
-# It ends with a **PASS / FAIL table**.
+# Re-runs everything from the raw GPAC file (downloaded and SHA-256 checked) and compares the
+# results with `outputs/results.json`. Ends with a **PASS / FAIL table**. Fixed seeds throughout.
 #
-# | Mode | When | RAM | Time | What is checked |
-# |---|---|---|---|---|
-# | **Full** (`SCALE = 1.0`) | machine with ≥ 24 GB RAM | ~22 GB | ~20 min | every reported number, exactly (tolerance 1e-6) |
-# | **Quick** (`SCALE < 1`) | e.g. free Google Colab (12 GB) | ~4–8 GB | ~5 min | the conclusions: orderings and trends of all tasks |
+# | Mode | RAM | Time | Checks |
+# |---|---|---|---|
+# | Full (`SCALE = 1.0`) | ≥ 24 GB | ~20 min | every number, exactly |
+# | Quick (`SCALE < 1`, e.g. Colab) | ~8 GB | ~5 min | the trends |
 #
-# Everything is deterministic: random choices use fixed seeds (split 42, generation 7,
-# evaluation samples 0), so the full mode reproduces the report exactly.
-#
-# **Run:** *Runtime → Run all* (Colab) or `jupyter nbconvert --execute` locally. The notebook
-# downloads the corpus itself from the course Google Drive link and verifies its SHA-256.
+# Run: *Runtime → Run all*.
 
 # %% [markdown]
 # ## 0. Configuration
@@ -106,8 +100,6 @@ print("GPAC.txt verified:", RAW.stat().st_size, "bytes, sha256 OK")
 
 # %% [markdown]
 # ## 2. Preprocessing (Task 1.1)
-# Normalisation → sentence splitting → tokenisation, exactly as in `amharic_lm/text.py`.
-# The raw file is a single 1 GB line, so it is processed in 4M-character chunks.
 
 # %%
 T0 = time.time()
@@ -203,8 +195,6 @@ gc.collect()
 
 # %% [markdown]
 # ## 4. Task 2 — deduplicate, split, perplexity
-# Each distinct sentence is kept once, then 98% train / 2% test (seed 42); 0.5% of train is a
-# development set for tuning add-k. Words seen < 2 times in training become `<UNK>`.
 
 # %%
 DEDUP = DATA / (WORK.stem + "_dedup.txt")
@@ -273,8 +263,6 @@ check("2", "KN beats add-k and Laplace for n ≥ 2", "KN lowest",
 
 # %% [markdown]
 # ## 5. Task 3 — extrinsic evaluation
-# Next-word prediction (5,000 positions), keystroke savings (1,500 words) and real-vs-corrupted
-# discrimination (3,000 sentences), same seeds as the report.
 
 # %%
 ext = {}
@@ -302,7 +290,6 @@ check("3", "bigram+ detects shuffled sentences", "> 95%", round(100 * ext.loc[3,
 
 # %% [markdown]
 # ## 6. Task 4 — next-word suggestions
-# Same engine as the app: last two words → candidates → Kneser-Ney → top 5.
 
 # %%
 def suggest(text, n=3, k=5):

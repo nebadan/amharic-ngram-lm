@@ -5,27 +5,23 @@
 #       extension: .py
 #       format_name: percent
 #   kernelspec:
-#     display_name: Python (NLP Amharic)
+#     display_name: Python 3
 #     language: python
-#     name: nlp-amharic
+#     name: python3
 # ---
 
 # %% [markdown]
 # # NLP Assignment 1 — Amharic N-gram Language Models
-# **Addis Ababa University · School of Information Technology and Engineering**
+# Addis Ababa University · Corpus: GPAC (Gereme et al., *Information* 12(1):20, 2021)
 #
-# Corpus: **GPAC** (General Purpose Amharic Corpus), Gereme, Zhu, Ayall & Alemu, *Information* 12(1):20, 2021 (https://doi.org/10.3390/info12010020).
+# | Task | Part |
+# |---|---|
+# | #1 N-gram model (1.1–1.8) | 1 |
+# | #2 Intrinsic evaluation | 2 |
+# | #3 Extrinsic evaluation | 3 |
+# | #4 Next-word suggestion | 4 |
 #
-# | Task | Weight | Section |
-# |---|---|---|
-# | #1 N-gram language model (1.1 – 1.8) | 6% | Part 1 |
-# | #2 Intrinsic evaluation (perplexity) | 3% | Part 2 |
-# | #3 Extrinsic evaluation | 5% | Part 3 |
-# | #4 Predictive text / next-word suggestion | 6% | Part 4 (+ `app/`) |
-#
-# All n-gram code lives in the `amharic_lm` package (in this repo). N-grams are
-# stored as 64-bit hashes in sorted numpy arrays so that 4-gram counts for the
-# whole 1 GB corpus fit in memory and lookups are binary searches.
+# Code: `amharic_lm/` (n-grams stored as 64-bit hashes in sorted numpy arrays).
 
 # %%
 import gc, json, os, sys, time
@@ -63,18 +59,7 @@ def save_results():
 # ---
 # # Part 1 — N-gram language model
 # ## 1.1 Preprocessing and corpus statistics
-#
-# **Preprocessing pipeline** (`amharic_lm/text.py`):
-# 1. Unicode NFC normalization.
-# 2. **Homophone normalization** — Amharic writes the same sound with several letters
-#    (ሀ/ሐ/ኀ, ሰ/ሠ, አ/ዐ, ጸ/ፀ, and ኣ/ዓ→አ, ሃ→ሀ). All 7 vowel orders of each family are mapped to
-#    one form, so e.g. *ሐገር* and *ሀገር* become one word.
-# 3. **Sentence segmentation** on `።`, `፡፡` (two word-spaces, very common in web text), `፧`, `?`, `!`, `፨`.
-# 4. **Tokenization**: Ethiopic punctuation (`፡ ፣ ፤ ፥ ፦`) and ASCII punctuation become spaces;
-#    digit runs (Arabic and Ethiopic) become `<NUM>`; non-Ethiopic characters (Latin text, emoji) are dropped.
-#
-# The raw file is a single 1 GB line, so it is read in 4M-character chunks cut at sentence ends.
-# The cleaned corpus is cached as one sentence per line in `data/gpac_clean.txt`.
+# NFC → homophone normalization (ሐ/ኀ→ሀ, ሠ→ሰ, ዐ→አ, ፀ→ጸ) → sentence split on `።` `፡፡` `፧` `?` `!` → tokenize (punctuation removed, numbers → `<NUM>`, Latin dropped).
 
 # %%
 RAW, CLEAN = DATA / "GPAC.txt", DATA / "gpac_clean.txt"
@@ -160,19 +145,10 @@ plt.tight_layout(); plt.savefig(FIG / "heaps.png", bbox_inches="tight"); plt.sho
 del seen; gc.collect()
 
 # %% [markdown]
-# Amharic is morphologically rich: prepositions (በ-, ለ-, ከ-, የ-), conjunctions (-ና, -ም) and
-# possessives attach to words, so one lemma appears in many surface forms. This shows up as a very
-# large vocabulary, a high share of hapax words, and a Heaps' exponent well above English values.
-# It is the main reason higher-order n-grams are sparse on this corpus.
+# Large vocabulary and many hapaxes: Amharic attaches prepositions and suffixes to words. About a quarter of sentences are repeats; they are removed before evaluation (Part 2).
 #
-# GPAC is crawled from news sites and other web text, so about a quarter of its sentences are
-# exact repeats (boilerplate such as agency datelines, re-published articles). Part 1 describes the
-# corpus as given; for evaluation (Parts 2–4) we remove the repeats first, otherwise the same
-# sentence ends up in both training and test data and the scores are inflated.
-#
-# ## 1.2 Creating n-grams (n = 1, 2, 3, 4)
-# Each sentence is padded as `<s> <s> <s> w1 … wn </s>` (n−1 start symbols for a 4-gram model); an
-# n-gram never crosses a sentence boundary.
+# ## 1.2 Creating n-grams (n = 1–4)
+# Sentences are padded `<s> <s> <s> w1 … wn </s>`; n-grams never cross sentences.
 
 # %%
 vocab_full = Vocab.from_counter(word_counts, min_count=1)
@@ -199,10 +175,8 @@ RESULTS["ngram_counts"] = ngram_counts.to_dict("records")
 display(ngram_counts.style.format({"unique n-grams": "{:,}", "total n-grams": "{:,}", "singletons (%)": "{:.1f}"}))
 
 # %% [markdown]
-# ## 1.3 N-gram probabilities and the top-10 most likely n-grams
-# The probability of an n-gram is its relative frequency among all n-grams of the same order,
-# $P(w_1..w_n) = C(w_1..w_n)\,/\,\sum C(\cdot)$. Sentence-boundary symbols are left out of the
-# listing so the tables show real word sequences.
+# ## 1.3 N-gram probabilities and top-10 n-grams
+# $P(w_1..w_n) = C(w_1..w_n) / \sum C(\cdot)$
 
 # %%
 def top_table(lm, n, k=10, skip=(BOS, EOS)):
@@ -217,8 +191,8 @@ for n in range(1, 5):
     display(df.style.format({"count": "{:,}", "P": "{:.2e}"}))
 
 # %% [markdown]
-# ## 1.4 Conditional probability of a word given the previous word (bigrams)
-# $P(w_i \mid w_{i-1}) = C(w_{i-1} w_i) \,/\, C(w_{i-1}\,\cdot)$ — the maximum-likelihood estimate.
+# ## 1.4 Conditional probability (bigrams)
+# $P(w_i \mid w_{i-1}) = C(w_{i-1} w_i) / C(w_{i-1}\,\cdot)$
 
 # %%
 def cond_prob(prev, w, lm=lm_full):
@@ -248,10 +222,8 @@ for w in ["ኢትዮጵያ", "አዲስ", "የቡና", "ጠቅላይ", "በአ�
     print(f"P(· | {w}):", top_followers(w))
 
 # %% [markdown]
-# ## 1.5 Removing stop-words and recomputing n-gram frequencies
-# A curated list of Amharic function words (copulas ነው/ናቸው, conjunctions እና/ግን, postpositions
-# ላይ/ውስጥ, demonstratives ይህ/እነዚህ, pronouns, reporting verbs …) plus `<NUM>` is removed from every
-# sentence; n-grams are then rebuilt so they span the remaining content words.
+# ## 1.5 Stop-word removal
+# 163 curated function words plus `<NUM>` are removed; n-grams are rebuilt.
 
 # %%
 print(f"{len(STOPWORDS)} stop-words, e.g.:", sorted(STOPWORDS)[:30])
@@ -270,10 +242,8 @@ for n in range(1, 5):
     display(df.style.format({"count": "{:,}", "P": "{:.2e}"}))
 
 # %% [markdown]
-# ## 1.6 Word clouds before and after stop-word removal
-# The number placeholder `<NUM>` is kept in the model (dropping it would join words that were
-# never adjacent, e.g. "በ 2010 አም" → "በ አም"), but n-grams containing it are left out of the
-# clouds so that they show words only.
+# ## 1.6 Word clouds
+# `<NUM>` stays in the model but is left out of the clouds.
 
 # %%
 from wordcloud import WordCloud
@@ -295,20 +265,14 @@ for n in range(1, 5):
 plt.tight_layout(); plt.savefig(FIG / "wordclouds.png", bbox_inches="tight", dpi=80); plt.show()
 
 # %% [markdown]
-# With stop-words, the clouds are dominated by function words and fixed grammatical frames
-# (ነው, ላይ, ውስጥ, "… መሆኑን ገልጸዋል"). After removal, content words and named entities surface:
-# places (ኢትዮጵያ, አዲስ አበባ), institutions and titles (ጠቅላይ ሚኒስትር), and topics typical of
-# news text, which makes up most of GPAC.
+# With stop-words: function words dominate. Without: names and topics (አዲስ አበባ, ጠቅላይ ሚኒስትር).
 
 # %%
 del lm_sw, sw, sw_counts, vocab_sw; gc.collect()
 
 # %% [markdown]
 # ## 1.7 Probability of a sentence
-# Chain rule with the Markov assumption:
-# $P(w_1..w_m) \approx \prod_i P(w_i \mid w_{i-n+1}..w_{i-1})$, including the final `</s>`.
-# We report the unsmoothed MLE estimate (zero if any n-gram is unseen) and the interpolated
-# **Kneser-Ney** estimate (which never assigns zero), as log₁₀ probabilities.
+# $P(w_1..w_m) \approx \prod_i P(w_i \mid w_{i-n+1}..w_{i-1})$, including `</s>`; MLE vs. Kneser-Ney, as log₁₀.
 
 # %%
 test_sents = ["ኢትዮጵያ በአፍሪካ ቀንድ ትገኛለች።",
@@ -343,9 +307,8 @@ RESULTS["sentence_breakdown"] = breakdown.values.tolist()
 display(breakdown.style.format({"MLE": "{:.4f}", "Kneser-Ney": "{:.4f}"}))
 
 # %% [markdown]
-# ## 1.8 Generating random sentences
-# Shannon's method: start from `<s>`, repeatedly sample the next word from the MLE distribution
-# $P(w \mid \text{previous } n-1 \text{ words})$, stop at `</s>` (or 30 words).
+# ## 1.8 Random sentence generation
+# Sample each next word from the MLE distribution until `</s>`.
 
 # %%
 rng = np.random.default_rng(7)
@@ -358,20 +321,7 @@ for n in range(1, 5):
 RESULTS["generated"] = gen
 
 # %% [markdown]
-# **What happens as n increases**
-# * **Unigram:** words are drawn independently by frequency. Output is a bag of common words
-#   (ነው, ላይ, የ…) with no syntax; sentence length is random.
-# * **Bigram:** neighbouring pairs are grammatical (e.g. a possessive followed by a noun), but the
-#   sentence drifts between topics after every word and rarely forms a complete clause.
-# * **Trigram:** short phrases are fluent and many sentences end with a proper verb
-#   (…ገልጸዋል, …ነው), the typical Amharic SOV ending. Topic coherence holds for a few words.
-# * **4-gram:** sentences look like real news sentences — because they mostly *are* real
-#   sentences. With 4-grams most contexts have been seen only once or twice, so sampling copies
-#   long spans of the training text verbatim (overfitting / memorization).
-#
-# So increasing n trades novelty for fluency: local grammaticality improves quickly, but the
-# model needs exponentially more data, and beyond n = 3 on this corpus it mainly reproduces the
-# training data. The data-sparsity numbers in 1.2 (share of singleton 4-grams) explain why.
+# **As n increases:** unigram = random words → bigram = grammatical pairs → trigram = fluent clauses → 4-gram = copies of training sentences (70% of 4-grams are seen once). Fluency up, novelty down.
 
 # %%
 del lm_full, full; gc.collect()
@@ -379,21 +329,9 @@ save_results()
 
 # %% [markdown]
 # ---
-# # Part 2 — Intrinsic evaluation: perplexity
-# **Deduplication first:** each distinct sentence is kept once (first occurrence), so no test
-# sentence also appears in training. In a first run without this step, 4-gram top-1 next-word
-# accuracy was 44% — mostly the model recalling repeated boilerplate sentences.
-#
-# The unique sentences are split randomly into **98% train / 2% test** (seed 42). The vocabulary is built
-# from training data only; words seen fewer than 2 times become `<UNK>`, so the model has a
-# probability for unknown words. Perplexity is computed over every test token plus `</s>`:
-# $PP = \exp\big(-\tfrac{1}{N}\sum \ln P(w_i \mid h_i)\big)$.
-#
-# Smoothing methods compared for n = 1..4:
-# * **MLE** — no smoothing; any unseen n-gram gives P = 0 → infinite perplexity.
-# * **Laplace (add-1)** and **add-k** (k tuned on a dev split).
-# * **Interpolated Kneser-Ney** (absolute discount D = n₁/(n₁+2n₂) per order, continuation counts
-#   for lower orders) — the standard strong baseline for n-gram models.
+# # Part 2 — Intrinsic evaluation (perplexity)
+# Deduplicate sentences → 98% train / 2% test (seed 42) → words seen < 2 times become `<UNK>`.
+# $PP = \exp\big(-\tfrac{1}{N}\sum \ln P(w_i \mid h_i)\big)$. Compared: MLE, Laplace, add-k (tuned), interpolated Kneser-Ney.
 
 # %%
 DEDUP = DATA / "gpac_dedup.txt"
@@ -473,7 +411,7 @@ ax[1].set(xticks=[1, 2, 3, 4], xlabel="n", ylabel="% of test tokens",
 plt.tight_layout(); plt.savefig(FIG / "perplexity.png", bbox_inches="tight"); plt.show()
 
 # %% [markdown]
-# ### Extra: effect of training-set size on perplexity (Kneser-Ney)
+# ### Extra: training-set size
 
 # %%
 lc = []
@@ -496,33 +434,14 @@ plt.tight_layout(); plt.savefig(FIG / "learning_curve.png", bbox_inches="tight")
 save_results()
 
 # %% [markdown]
-# **Findings (intrinsic).**
-# * **MLE is unusable** for evaluation: already for bigrams a large share of test tokens get zero
-#   probability, so perplexity is infinite. This is the sparsity problem in numbers.
-# * **Add-1 gets worse as n grows.** It moves far too much probability mass to the hundreds of
-#   thousands of unseen continuations, so bigram/trigram/4-gram add-1 models are *worse than
-#   the unigram*. Tuning k helps but the trend remains.
-# * **Kneser-Ney improves steadily with n**: interpolation with lower orders handles unseen
-#   contexts, and continuation counts give better lower-order estimates. The gain from 3→4 is
-#   smaller than 1→2→3, a sign of diminishing returns with this much data.
-# * The learning curve shows larger n benefits most from more data: with ~3 M training tokens
-#   the 4-gram is no better than the trigram; with 60 M tokens it is clearly better.
+# **Findings:** MLE gives zero probabilities (∞ perplexity); add-one gets worse with n; Kneser-Ney improves at every order with diminishing returns; higher orders need more data.
 
 # %% [markdown]
 # ---
 # # Part 3 — Extrinsic evaluation
-# Intrinsic perplexity doesn't show whether a model is useful. We embed each model (n = 1..4,
-# Kneser-Ney) in three downstream tasks on the held-out test sentences:
-#
-# 1. **Next-word prediction** (the task behind Part 4): given the history, rank all vocabulary
-#    words; report top-1/3/5/10 accuracy and MRR@10 on 5,000 random test positions.
-# 2. **Keystroke savings** in a simulated predictive keyboard: the user types letters until the
-#    intended word appears in the 5 suggestions, then taps it. KSS = 1 − keystrokes/characters.
-# 3. **Real-vs-corrupted sentence discrimination** (a grammaticality / fluency judgement, as used in
-#    spelling- and grammar-checking and in ranking machine-translation or speech-recognition
-#    output): the model must give the real sentence a higher probability than (a) a copy with two
-#    adjacent words swapped, (b) a copy with one word replaced by a random frequent word, and
-#    (c) a fully shuffled copy. Chance = 50%.
+# 1. **Next-word prediction**: top-k accuracy and MRR on 5,000 test positions.
+# 2. **Keystroke savings**: simulated keyboard with 5 suggestions.
+# 3. **Real vs. corrupted sentence**: swap / replace / shuffle (chance = 50%).
 
 # %%
 ext = {}
@@ -565,33 +484,12 @@ plt.savefig(FIG / "intrinsic_vs_extrinsic.png", bbox_inches="tight"); plt.show()
 save_results()
 
 # %% [markdown]
-# **Findings (extrinsic).**
-# * Every task improves sharply from unigram to bigram — context is what makes prediction
-#   possible. Gains continue to the trigram and are small from 3 to 4, mirroring the perplexity
-#   results: lower perplexity went together with better downstream performance.
-# * The **unigram model is at exactly 50% on swap/shuffle**: it ignores word order, so a
-#   permutation has the same probability. On **replace** it is below chance because the inserted
-#   words are frequent ones, which a unigram model prefers.
-# * Shuffled sentences are almost always detected (~99%); a single adjacent swap is caught ~90% of
-#   the time and a single replaced word ~80% — a replacement only changes a few n-grams and a
-#   frequent word often fits locally.
-# * Keystroke savings stay substantial even though top-1 accuracy is modest, because Amharic
-#   words are long and a few typed letters narrow the candidates sharply (prefix completion).
+# **Findings:** same ranking as perplexity (1 ≪ 2 < 3 < 4). Unigram = 50% on swap/shuffle (ignores order). About half the keystrokes are saved.
 
 # %% [markdown]
 # ---
-# # Part 4 — Amharic predictive text and next-word suggestion
-# The suggestion engine (`NgramLM.topk_next`) does what the assignment lists:
-# 1. **reads** the input and normalizes/tokenizes it exactly like the corpus;
-# 2. **extracts the final one or two words** (trigram context; bigram/4-gram also selectable);
-# 3. **retrieves candidates** — every word seen after that context in the corpus, at each order,
-#    plus the most frequent words as a fallback;
-# 4. **estimates each candidate's probability** with interpolated Kneser-Ney (so unseen contexts
-#    back off smoothly instead of failing);
-# 5. **returns the top five**; if the last word is only partly typed (no trailing space), only
-#    words starting with those letters are suggested (word completion);
-# 6. the user **selects a suggestion** and continues — see the interactive Gradio app in `app/`
-#    (deployed on Hugging Face Spaces) and the composition demo below.
+# # Part 4 — Next-word suggestion
+# Input → last 1–2 words → candidates seen after them → Kneser-Ney probability → top 5 (word completion if the last word is unfinished). App: `app/` and the Hugging Face Space.
 
 # %%
 def suggest(text, n=3, k=5, lm=lm):
@@ -623,11 +521,7 @@ for pick in (0, 1):
     print(f"choose suggestion #{pick + 1} each time →", text.strip() + " ።")
 
 # %% [markdown]
-# **Model export for the app.** The full model is ~1 GB on disk, too large for a quick web demo.
-# For the Hugging Face app, bigrams/trigrams/4-grams seen fewer than 3 times are pruned
-# (unigrams and the vocabulary are kept whole, so every word can still be suggested). Context
-# statistics of surviving contexts are kept exact. We measure what pruning costs on the same
-# next-word prediction test.
+# **App model:** n-grams seen < 3 times are pruned to shrink the model; the cost is measured below.
 
 # %%
 APP_MODEL = ROOT / "app" / "model" / "amharic_4gram_kn.npz"
