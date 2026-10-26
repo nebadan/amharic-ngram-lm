@@ -17,7 +17,6 @@ Group: Neibyu Daniel · Yonas Tadesse · Selamawit Siferh — Instructor: Fantah
 | Written report | [report/NLP_Assignment1_Report.docx](report/NLP_Assignment1_Report.docx) / [.pdf](report/NLP_Assignment1_Report.pdf) |
 | Figures and raw results | [outputs/figures/](outputs/figures/), [outputs/results.json](outputs/results.json) |
 | Predictive-text app (Task 4) | Live (static, in-browser): https://huggingface.co/spaces/nebadan/amharic-next-word · exact local Gradio version: [app/app.py](app/app.py) |
-| Presentation slides | https://claude.ai/artifact/7GWdMZbbCQVZHLUkSAQSwa (download as .pptx/PDF from the deck) |
 
 ## Reproducing the results
 
