@@ -1,0 +1,14 @@
+# Python 3.12. Exact versions used for the reported results.
+numpy==2.5.4
+pandas==3.1.0
+matplotlib==3.11.2
+wordcloud==1.9.6
+pillow==12.3.0
+gdown==6.4.2
+jupyter==1.1.1
+nbconvert==7.17.2
+ipykernel==7.4.0
+jupytext==1.19.6
+# app and deployment
+gradio==6.30.0
+huggingface_hub==2.3.0

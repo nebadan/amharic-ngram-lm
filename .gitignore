@@ -1,0 +1,27 @@
+# environment
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.claude/
+
+# data: GPAC.txt is 1 GB and comes from the course Google Drive link (see README)
+data/
+
+# generated, large (rebuilt by the notebook / scripts)
+app/model/
+static_app/space/tables.bin
+
+# report build
+report/node_modules/
+report/.toc_pages.json
+report/.headings.json
+
+# LaTeX build files
+study_guide/*.aux
+study_guide/*.log
+study_guide/*.out
+study_guide/*.toc
+study_guide/*.fls
+study_guide/*.fdb_latexmk
+study_guide/*.xdv

@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="am">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amharic Next-Word Suggestion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f6f7f4; --card: #ffffff; --ink: #1d2320; --muted: #5d6762; --line: #dfe3dd;
+  --accent: #1f7a4d; --accent-ink: #ffffff; --accent-soft: #e5f2ea; --bar: #2f9a63; --warn: #a15c07;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #121614; --card: #1b201d; --ink: #e8ece9; --muted: #9aa59f; --line: #2c3430;
+    --accent: #3fb37a; --accent-ink: #0d130f; --accent-soft: #1f3328; --bar: #3fb37a; --warn: #e3a54f; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font-family: "Inter", "Noto Sans Ethiopic", system-ui, sans-serif; line-height: 1.5; }
+.wrap { max-width: 860px; margin: 0 auto; padding: 28px 16px 48px; }
+h1 { font-size: 1.6rem; margin: 0 0 4px; font-family: "Noto Sans Ethiopic", "Inter", sans-serif; }
+.sub { color: var(--muted); margin: 0 0 20px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+textarea { width: 100%; min-height: 110px; resize: vertical; border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px 14px; font: 1.35rem/1.6 "Noto Sans Ethiopic", sans-serif; background: var(--bg); color: var(--ink); }
+textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg button { border: 0; background: transparent; color: var(--ink); padding: 6px 14px; cursor: pointer; font: inherit; font-size: .9rem; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.label { color: var(--muted); font-size: .9rem; }
+.sugg { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 14px; }
+.sugg button { min-height: 52px; border-radius: 10px; border: 1px solid var(--line); background: var(--accent-soft);
+  color: var(--ink); font: 600 1.15rem "Noto Sans Ethiopic", sans-serif; cursor: pointer; padding: 6px; overflow-wrap: anywhere; }
+.sugg button:first-child { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.sugg button:hover { filter: brightness(1.06); }
+.sugg button .k { display: block; font: 400 .7rem "Inter", sans-serif; opacity: .75; }
+@media (max-width: 560px) { .sugg { grid-template-columns: repeat(2, 1fr); } }
+.info { margin-top: 12px; font-size: .92rem; color: var(--muted); min-height: 1.4em; }
+.info b { color: var(--ink); font-family: "Noto Sans Ethiopic", sans-serif; }
+table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+th { white-space: nowrap; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); font-size: .95rem; }
+td.w { font: 1.05rem "Noto Sans Ethiopic", sans-serif; }
+td.p { font-variant-numeric: tabular-nums; width: 90px; }
+.bar { height: 10px; border-radius: 5px; background: var(--bar); }
+.btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 8px; padding: 7px 14px; cursor: pointer; font: inherit; }
+.btn:hover { border-color: var(--accent); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1px dashed var(--line); background: transparent; color: var(--ink); border-radius: 999px; padding: 4px 12px; cursor: pointer;
+  font: .95rem "Noto Sans Ethiopic", sans-serif; }
+.chip:hover { border-color: var(--accent); }
+#status { color: var(--warn); }
+details { color: var(--muted); font-size: .92rem; }
+details summary { cursor: pointer; color: var(--ink); }
+.approx { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>የአማርኛ ቃል ጠቋሚ · Amharic Next-Word Suggestion</h1>
+  <p class="sub">Type an incomplete Amharic sentence. The model reads the last one or two words and suggests the five most likely next words, scored with an interpolated Kneser-Ney n-gram model trained on the GPAC corpus. Click a suggestion to add it. Stop in the middle of a word to complete it.</p>
+
+  <div class="card">
+    <div class="row" style="justify-content: space-between; margin-bottom: 10px;">
+      <div class="row"><span class="label">Context:</span>
+        <div class="seg" role="group" aria-label="Context length">
+          <button data-n="2" aria-pressed="false">1 word (bigram)</button>
+          <button data-n="3" aria-pressed="true">2 words (trigram)</button>
+        </div>
+      </div>
+      <span id="status">Loading model…</span>
+    </div>
+    <textarea id="txt" placeholder="ኢትዮጵያ ውስጥ የቡና …" autofocus disabled></textarea>
+    <div class="sugg" id="sugg"></div>
+    <div class="info" id="info"></div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content: space-between;">
+      <strong>Top 5 with probabilities</strong>
+      <div class="row"><button class="btn" id="auto">Complete the sentence</button><button class="btn" id="clear">Clear</button></div>
+    </div>
+    <table><thead><tr><th>#</th><th>Word</th><th>P(word | context)</th><th style="width:40%"></th></tr></thead><tbody id="tbl"></tbody></table>
+  </div>
+
+  <div class="card">
+    <div class="label" style="margin-bottom:8px">Try an example</div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <details class="card">
+    <summary>How it works</summary>
+    <p>1. The input is normalized like the training corpus (e.g. ሐ/ኀ→ሀ, ሠ→ሰ, ዐ→አ, ፀ→ጸ; numbers → &lt;NUM&gt;) and only the sentence being written is used.<br>
+    2. The final one or two words form the context (sentence start is padded with &lt;s&gt;).<br>
+    3. Candidate next words and their Kneser-Ney probabilities are looked up in tables precomputed from a 4-gram model trained on ~60 M words of the GPAC corpus (deduplicated).<br>
+    4. If the two-word context was not frequent enough to be stored, the app backs off to the one-word context, then to word frequency; backed-off scores are marked with ~.<br>
+    5. The top five are shown; ። means the model expects the sentence to end. With a partly typed word, only words starting with those letters are suggested.</p>
+    <p id="stats"></p>
+    <p>NLP Assignment 1 — Addis Ababa University, School of Information Technology and Engineering.</p>
+  </details>
+</div>
+
+<script>
+// ---------------- normalization & tokenization (mirrors amharic_lm/text.py) ----------------
+const CHAR_MAP = new Map();
+for (const [src, dst] of [["ሐ","ሀ"],["ኀ","ሀ"],["ሠ","ሰ"],["ዐ","አ"],["ፀ","ጸ"]])
+  for (let i = 0; i < 7; i++) CHAR_MAP.set(String.fromCharCode(src.charCodeAt(0) + i), String.fromCharCode(dst.charCodeAt(0) + i));
+Object.entries({"ኣ":"አ","ዓ":"አ","ሃ":"ሀ","ሓ":"ሀ","ኃ":"ሀ","ቍ":"ቁ","ኵ":"ኩ","ጕ":"ጉ","ዃ":"ኳ"}).forEach(([a,b]) => CHAR_MAP.set(a,b));
+const normalize = (t) => Array.from(t.normalize("NFC"), (c) => CHAR_MAP.get(c) ?? c).join("");
+const SENT_END = /(?:፡፡|[።፧!?፨])+|\n/;
+const ABBR = /(?<=[ሀ-፿])[./](?=[ሀ-፿])/g;
+const NUM = /[0-9፩-፼]+(?:[.,/:][0-9፩-፼]+)*/g;
+const PUNCT = /[፡፣፤፥፦፠"'“”‘’«»()\[\]{}<>.,;:/\\|_*#@&%^~`+=–—\-]+/g;
+const NON_ETH = /[^ሀ-ፚᎀ-᎟ⶀ-⷟꬀-꬯]+/g;
+function tokenize(s) {
+  s = s.replace(ABBR, "").replace(NUM, " NUMTOKEN ").replace(PUNCT, " ");
+  const toks = [];
+  for (let t of s.split(/\s+/)) {
+    if (!t) continue;
+    if (t === "NUMTOKEN") { if (toks[toks.length - 1] !== "<NUM>") toks.push("<NUM>"); continue; }
+    t = t.replace(NON_ETH, "");
+    if (t) toks.push(t);
+  }
+  return toks;
+}
+
+// ---------------- model ----------------
+let M = null;  // {vocab, uni, c2, c3}
+const K = 5, END = "።";
+let N = 3;
+
+async function loadModel() {
+  const res = await fetch("tables.bin");
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  let buf = new Uint8Array(await res.arrayBuffer());
+  let text;
+  if (buf[0] === 0x1f && buf[1] === 0x8b) {
+    const ds = new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"));
+    text = await new Response(ds).text();
+  } else text = new TextDecoder().decode(buf);
+  M = JSON.parse(text);
+}
+
+function analyse(raw) {
+  const norm = normalize(raw || "");
+  const parts = norm.split(SENT_END);
+  const current = parts[parts.length - 1] || "";
+  const toks = tokenize(current);
+  let prefix = "";
+  if (current && !/\s$/.test(current) && toks.length) prefix = toks.pop();
+  const padded = ["<s>", "<s>", ...toks];
+  return { toks, prefix, padded };
+}
+
+function suggest(raw, n = N) {
+  const { toks, prefix, padded } = analyse(raw);
+  const levels = [];
+  if (n >= 3) levels.push({ name: "trigram", key: padded.slice(-2).join(" "), table: M.c3 });
+  levels.push({ name: "bigram", key: padded.slice(-1).join(" "), table: M.c2 });
+  const out = [], seen = new Set();
+  let used = null;
+  for (const [i, lv] of levels.entries()) {
+    const list = lv.table[lv.key];
+    if (!list) continue;
+    if (!used) used = lv;
+    for (const [id, p] of list) {
+      if (seen.has(id)) continue;
+      const w = M.vocab[id];
+      if (w === "<NUM>") continue;  // a number placeholder is not a useful suggestion
+      if (prefix && (id === 0 || !w.startsWith(prefix))) continue;
+      seen.add(id);
+      out.push({ w: id === 0 ? END : w, id, p, approx: lv !== used });
+      if (out.length >= K) break;
+    }
+    if (out.length >= K) break;
+  }
+  // final backoff: word frequency (vocab is sorted by frequency)
+  if (out.length < K) {
+    for (let id = 1; id < M.vocab.length && out.length < K; id++) {
+      if (seen.has(id)) continue;
+      const w = M.vocab[id];
+      if (prefix && !w.startsWith(prefix)) continue;
+      if (w === "<NUM>") continue;
+      seen.add(id);
+      out.push({ w, id, p: M.uni[id], approx: true });
+    }
+  }
+  return { toks, prefix, used, sugg: out };
+}
+
+// ---------------- UI ----------------
+const $ = (id) => document.getElementById(id);
+const txt = $("txt");
+
+function render() {
+  if (!M) return;
+  const { toks, prefix, used, sugg } = suggest(txt.value);
+  $("sugg").innerHTML = "";
+  sugg.forEach((s, i) => {
+    const b = document.createElement("button");
+    b.innerHTML = `${escapeHtml(s.w)}<span class="k">${i + 1}</span>`;
+    b.title = `P = ${s.p.toFixed(4)}`;
+    b.onclick = () => accept(s.w);
+    $("sugg").appendChild(b);
+  });
+  const top = sugg.length ? sugg[0].p : 1;
+  $("tbl").innerHTML = sugg.map((s, i) => `<tr><td>${i + 1}</td><td class="w">${escapeHtml(s.w)}</td>
+    <td class="p">${s.approx ? '<span class="approx">~</span>' : ""}${s.p.toFixed(4)}</td>
+    <td><div class="bar" style="width:${Math.max(2, 100 * s.p / top)}%"></div></td></tr>`).join("");
+  const ctxWords = used ? used.key.split(" ").filter((w) => w !== "<s>") : [];
+  let info = `Context used: <b>${ctxWords.length ? escapeHtml(ctxWords.join(" ")) : "⟨sentence start⟩"}</b>`;
+  info += used ? ` · ${used.name} table` : " · backed off to word frequency";
+  if (prefix) info += ` · completing <b>${escapeHtml(prefix)}…</b>`;
+  $("info").innerHTML = info;
+}
+
+function accept(word) {
+  let t = txt.value;
+  if (word === END) { t = t.replace(/\s+$/, "") + END + " "; }
+  else {
+    const { prefix } = analyse(t);
+    if (prefix) t = t.replace(/\S+$/, "");
+    else if (t && !/\s$/.test(t)) t += " ";
+    t += word + " ";
+  }
+  txt.value = t;
+  txt.focus();
+  render();
+}
+
+function escapeHtml(s) { return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+document.querySelectorAll(".seg button").forEach((b) => b.onclick = () => {
+  N = +b.dataset.n;
+  document.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  render();
+});
+txt.addEventListener("input", render);
+txt.addEventListener("keydown", (e) => {
+  // Alt+1..5 picks a suggestion
+  if (e.altKey && e.key >= "1" && e.key <= "5") {
+    const b = $("sugg").children[+e.key - 1];
+    if (b) { e.preventDefault(); b.click(); }
+  }
+});
+$("clear").onclick = () => { txt.value = ""; txt.focus(); render(); };
+$("auto").onclick = () => {
+  for (let i = 0; i < 15; i++) {
+    const { sugg } = suggest(txt.value);
+    if (!sugg.length) break;
+    accept(sugg[0].w);
+    if (sugg[0].w === END) break;
+  }
+};
+["ኢትዮጵያ ውስጥ የቡና ", "ኢትዮጵያ በአፍሪካ ", "አዲስ አበባ ", "ጠቅላይ ሚኒስትር ", "የኢትዮጵያ ህዝብ ", "በዚህ አመት ", "ኢትዮጵያ ውስጥ የቡና ም"]
+  .forEach((ex) => { const c = document.createElement("button"); c.className = "chip"; c.textContent = ex.trim() + (ex.endsWith(" ") ? " …" : "…");
+    c.onclick = () => { txt.value = ex; txt.focus(); render(); }; $("chips").appendChild(c); });
+
+loadModel().then(() => {
+  $("status").textContent = "";
+  txt.disabled = false; txt.focus();
+  const q = new URLSearchParams(location.search).get("q");  // ?q= prefills the input
+  if (q) txt.value = q;
+  $("stats").textContent = `Model tables: ${M.vocab.length.toLocaleString()} words · ${Object.keys(M.c2).length.toLocaleString()} one-word contexts · ${Object.keys(M.c3).length.toLocaleString()} two-word contexts.`;
+  render();
+}).catch((e) => { $("status").textContent = "Could not load the model: " + e.message; });
+</script>
+</body>
+</html>
