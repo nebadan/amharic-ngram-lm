@@ -221,8 +221,8 @@ for (const n of [1, 2, 3, 4]) {
 body.push(P("After removal the lists show content words and multi-word names: places (አዲስ አበባ), institutions (ምክር ቤት, የህዝብ ተወካዮች ምክር ቤት — House of Peoples' Representatives; ፍርድ ቤት — court), titles with names (ጠቅላይ ሚኒስትር አብይ አህመድ, ጠቅላይ ሚኒስትር መለስ ዜናዊ), and news-agency boilerplate (… ኢሳት ዜና). The 3- and 4-gram lists now read like a topic index of Ethiopian news."));
 
 body.push(H2("1.6 Word clouds before and after stop-word removal"));
-body.push(...figure(FIG("wordclouds.png"), 5.6, "Figure 2. Word clouds of the 150 most frequent n-grams, n = 1–4 (left: with stop-words, right: stop-words removed)."));
-body.push(P("With stop-words the clouds are dominated by grammatical words and date patterns; after removal, named entities and topics (government, people, Addis Ababa, the Prime Minister, parliament, church) become visible."));
+body.push(...figure(FIG("wordclouds.png"), 5.6, "Figure 2. Word clouds of the 150 most frequent n-grams, n = 1–4 (left: with stop-words, right: stop-words removed). N-grams containing the number placeholder <NUM> are left out of the clouds."));
+body.push(P("The number placeholder <NUM> stays in the model — dropping it would join words that were never adjacent (\u201cበ 2010 አም\u201d would become \u201cበ አም\u201d) — but n-grams containing it are left out of the clouds so they show words only. With stop-words the clouds are dominated by grammatical words and date words (ቀን, አም); after removal, named entities and topics (government, people, Addis Ababa, the Prime Minister, parliament, church) become visible."));
 
 body.push(H2("1.7 Probability of a sentence"));
 body.push(P("The sentence probability is the product of the conditional probabilities of each word (and </s>) given the previous n − 1 words. We report log₁₀ probabilities for unsmoothed MLE and for interpolated Kneser-Ney (KN, Section 3), which never assigns zero, plus the per-word perplexity under KN."));

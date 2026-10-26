@@ -271,21 +271,22 @@ for n in range(1, 5):
 
 # %% [markdown]
 # ## 1.6 Word clouds before and after stop-word removal
+# The number placeholder `<NUM>` is kept in the model (dropping it would join words that were
+# never adjacent, e.g. "በ 2010 አም" → "በ አም"), but n-grams containing it are left out of the
+# clouds so that they show words only.
 
 # %%
 from wordcloud import WordCloud
 
-CLOUD_FONT = "/usr/share/fonts/truetype/freefont/FreeSerif.ttf"  # has Ethiopic AND Latin (for <NUM>)
-
 def cloud(freqs):
-    return WordCloud(font_path=CLOUD_FONT if os.path.exists(CLOUD_FONT) else FONT, width=900, height=500, background_color="white",
+    return WordCloud(font_path=FONT, width=900, height=500, background_color="white",
                      colormap="viridis", max_words=150, prefer_horizontal=1.0,
                      regexp=r"\S+", collocations=False).generate_from_frequencies(freqs)
 
 fig, axes = plt.subplots(4, 2, figsize=(16, 20))
 for n in range(1, 5):
     for j, (lm, title) in enumerate([(lm_full, "with stop-words"), (lm_sw, "stop-words removed")]):
-        freqs = lm.frequencies(n, 150, skip=(BOS, EOS))  # n-gram words joined by spaces
+        freqs = lm.frequencies(n, 150, skip=(BOS, EOS, "<NUM>"))  # words joined by spaces; no <NUM>
         img = cloud(freqs)
         img.to_file(str(FIG / f"wordcloud_{n}gram_{'sw' if j else 'all'}.png"))
         axes[n - 1, j].imshow(img, interpolation="bilinear")
